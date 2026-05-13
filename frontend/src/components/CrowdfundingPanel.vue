@@ -56,8 +56,8 @@
       <div class="crowd-main">
         <section v-if="selectedCampaignInfo" class="box campaign-detail">
           <h3>Campaign 详情</h3>
-          <p><strong>地址:</strong> {{ selectedCampaign }}</p>
-          <p><strong>创建者:</strong> {{ selectedCampaignInfo.creator }}</p>
+          <p><strong>地址:</strong> <code>{{ selectedCampaign }}</code></p>
+          <p><strong>创建者:</strong> <code>{{ selectedCampaignInfo.creator }}</code></p>
           <p><strong>目标:</strong> {{ selectedCampaignInfo.target }} ETH</p>
           <p><strong>已筹金额:</strong> {{ selectedCampaignInfo.raised }} ETH</p>
           <p><strong>名义总额:</strong> {{ selectedCampaignInfo.totalContribution }} ETH</p>
@@ -67,7 +67,7 @@
           <p><strong>是否成功:</strong> {{ selectedCampaignInfo.success }}</p>
           <p><strong>募集款已提取:</strong> {{ selectedCampaignInfo.raisedWithdrawn }}</p>
           <p><strong>保证金已提取:</strong> {{ selectedCampaignInfo.depositWithdrawn }}</p>
-          <p><strong>项目代币合约:</strong> {{ selectedCampaignInfo.tokenAddress }}</p>
+          <p><strong>项目代币合约:</strong> <code>{{ selectedCampaignInfo.tokenAddress }}</code></p>
 
           <div class="user-info">
             <h4>我的参与</h4>
@@ -595,8 +595,8 @@ async function handleWithdrawDeposit() {
   margin: 6px 0;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
 }
@@ -605,6 +605,20 @@ async function handleWithdrawDeposit() {
 .user-info p strong {
   color: #334155;
   font-weight: 700;
+  flex-shrink: 0;
+}
+
+.campaign-detail p code,
+.user-info p code {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  word-break: break-all;
 }
 
 .user-info {

@@ -1,14 +1,10 @@
 // 此文件由 Hardhat 部署脚本自动生成，地址信息由 backend 写入 frontend/src/sdk/addresses.json
 import addresses from './addresses.json';
 
-export const STAKING_VAULT_ADDR = addresses.StakingVault || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-export const STAKING_ADDR = STAKING_VAULT_ADDR;
+export const STAKING_ADDR = addresses.StakingVault || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 export const CROWDFUND_FACTORY_ADDR = addresses.CrowdfundFactory || "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
-export const EXAMPLE_CAMPAIGN_ADDR = addresses.ExampleCampaign || "0xCafac3dD18aC6c6e92c921884f9E4176737C052c";
 
-export const LOCAL_PRIV_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-
-export const STAKING_VAULT_ABI = [
+export const STAKING_ABI = [
   {
     "inputs": [],
     "stateMutability": "nonpayable",

@@ -25,12 +25,7 @@ async function main() {
     // 3. 部署 CrowdfundFactory (工厂)
     // 注意：部署时需要传入 Vault 的地址和最小保证金
     console.log("[3/4] 正在部署 CrowdfundFactory...");
-    const Factory = await hre.ethers.getContractFactory("CrowdfundFactory", {
-        libraries: {
-            // 如果你的 Campaign 内部使用了 MathLogic 库，这里需要链接
-            // 但如果库是 internal 的，通常不需要在这里显示链接
-        }
-    });
+    const Factory = await hre.ethers.getContractFactory("CrowdfundFactory");
     const minDeposit = hre.ethers.parseEther("0.01");
     const factory = await Factory.deploy(vaultAddr, minDeposit);
     await factory.waitForDeployment();// 等待部署完成
@@ -59,8 +54,7 @@ async function main() {
     const addresses = {
         MathLogic: mathLogicAddr,
         StakingVault: vaultAddr,
-        CrowdfundFactory: factoryAddr,
-        ExampleCampaign: "0x0000000000000000000000000000000000000000"
+        CrowdfundFactory: factoryAddr
     };
 
     fs.writeFileSync("contract-addresses.json", JSON.stringify(addresses, null, 2));

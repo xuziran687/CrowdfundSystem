@@ -102,7 +102,6 @@ async function refreshData() {
   if (!wallet?.account || !wallet?.sdk) return;
   const acc = wallet.account;
   const sdkVal = wallet.sdk;
-  if (!acc || !sdkVal) return;
 
   try {
     balance.value = await sdkVal.getWalletBalance(acc);

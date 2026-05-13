@@ -1,5 +1,5 @@
 import { createPublicClient, createWalletClient, http, parseEther, formatEther, custom, defineChain } from 'viem';
-import { STAKING_VAULT_ABI as STAKING_ABI, STAKING_ADDR, CROWDFUND_FACTORY_ABI, CROWDFUND_FACTORY_ADDR, CAMPAIGN_ABI } from './contract.js';
+import { STAKING_ABI, STAKING_ADDR, CROWDFUND_FACTORY_ABI, CROWDFUND_FACTORY_ADDR, CAMPAIGN_ABI } from './contract.js';
 import { ERC20_ABI } from './erc20.js';
 
 // 自定义 Hardhat 网络配置

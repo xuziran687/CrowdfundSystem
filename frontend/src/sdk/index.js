@@ -102,10 +102,7 @@ export const createStakingSDK = (windowProvider = null) => {
     async getStakedAmount(userAddress) {
       const data = await readStaking('users', [userAddress]);
       const amount = data?.amount ?? data?.[0];
-      if (amount === undefined) {
-        return '0';
-      }
-      return formatEther(amount);
+      return weiToEther(amount);
     },
 
     async getCampaignInfo(campaignAddress) {
@@ -124,11 +121,11 @@ export const createStakingSDK = (windowProvider = null) => {
       ]);
       return {
         creator,
-        target: formatEther(target),
-        raised: formatEther(raised),
-        totalContribution: formatEther(totalContribution),
+        target: weiToEther(target),
+        raised: weiToEther(raised),
+        totalContribution: weiToEther(totalContribution),
         maxDeductionRatio: Number(maxDeductionRatio),
-        deposit: formatEther(deposit),
+        deposit: weiToEther(deposit),
         finalized,
         success,
         raisedWithdrawn,
@@ -139,12 +136,12 @@ export const createStakingSDK = (windowProvider = null) => {
 
     async getCampaignUserInfo(campaignAddress, userAddress) {
       const [contribution, ethContributed] = await Promise.all([
-        publicClient.readContract({ address: campaignAddress, abi: CAMPAIGN_ABI, functionName: 'contribution', args: [userAddress] }),
-        publicClient.readContract({ address: campaignAddress, abi: CAMPAIGN_ABI, functionName: 'ethContributed', args: [userAddress] }),
+        readCampaign(campaignAddress, 'contribution', [userAddress]),
+        readCampaign(campaignAddress, 'ethContributed', [userAddress]),
       ]);
       return {
-        contribution: formatEther(contribution),
-        ethContributed: formatEther(ethContributed),
+        contribution: weiToEther(contribution),
+        ethContributed: weiToEther(ethContributed),
       };
     },
 

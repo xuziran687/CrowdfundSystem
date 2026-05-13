@@ -230,8 +230,8 @@ body {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.5fr);
-  gap: 0 20px;
+  grid-template-columns: minmax(0, 5fr) auto minmax(0, 7fr);
+  gap: 0 24px;
   align-items: start;
 }
 
@@ -260,6 +260,19 @@ body {
   text-transform: uppercase;
   color: #64748b;
   margin-bottom: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.1);
+}
+
+.staking-section .eyebrow {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.crowd-section .eyebrow {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.1);
 }
 
 .section-title {

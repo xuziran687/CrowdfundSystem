@@ -1,5 +1,6 @@
 import { createPublicClient, createWalletClient, http, parseEther, formatEther, custom, defineChain } from 'viem';
 import { STAKING_VAULT_ABI as STAKING_ABI, STAKING_ADDR, CROWDFUND_FACTORY_ABI, CROWDFUND_FACTORY_ADDR, CAMPAIGN_ABI } from './contract.js';
+import { ERC20_ABI } from './erc20.js';
 
 // 自定义 Hardhat 网络配置
 const hardhat = defineChain({
@@ -60,6 +61,14 @@ export const createStakingSDK = (windowProvider = null) => {
     publicClient.readContract({
       address: campaignAddress,
       abi: CAMPAIGN_ABI,
+      functionName,
+      args,
+    });
+
+  const readERC20 = (tokenAddress, functionName, args = []) =>
+    publicClient.readContract({
+      address: tokenAddress,
+      abi: ERC20_ABI,
       functionName,
       args,
     });
@@ -126,6 +135,23 @@ export const createStakingSDK = (windowProvider = null) => {
         readCampaign(campaignAddress, 'depositWithdrawn'),
         readCampaign(campaignAddress, 'token'),
       ]);
+      
+      // 获取代币符号和小数位数
+      let symbol = 'TOKEN';
+      let decimals = 18; // 默认为18
+      try {
+        if (tokenAddress) {
+          const [symbolResult, decimalsResult] = await Promise.all([
+            readERC20(tokenAddress, 'symbol'),
+            readERC20(tokenAddress, 'decimals')
+          ]);
+          symbol = symbolResult;
+          decimals = Number(decimalsResult);
+        }
+      } catch (err) {
+        console.error('获取代币信息失败:', err);
+      }
+      
       return {
         creator,
         target: weiToEther(target),
@@ -138,6 +164,8 @@ export const createStakingSDK = (windowProvider = null) => {
         raisedWithdrawn,
         depositWithdrawn,
         tokenAddress,
+        symbol,
+        decimals,
       };
     },
 
@@ -154,7 +182,7 @@ export const createStakingSDK = (windowProvider = null) => {
 
     async createCampaign(userAddress, target, totalToken, ratio, name, symbol, deposit) {
       if (!walletClient) throw new Error('钱包未连接');
-      const args = [parseEther(target), BigInt(totalToken), BigInt(ratio), name, symbol];
+      const args = [parseEther(target), BigInt(totalToken) * 10n**18n, BigInt(ratio), name, symbol];
       const value = parseEther(String(deposit || '0'));
       const gas = await publicClient.estimateContractGas({
         address: CROWDFUND_FACTORY_ADDR,
@@ -215,7 +243,7 @@ export const createStakingSDK = (windowProvider = null) => {
       });
     },
 
-    async claimCampaign(campaignAddress, userAddress) {
+    async claimCampaign(campaignAddress, userAddress) {// 领取
       if (!walletClient) throw new Error('钱包未连接');
       const gas = await publicClient.estimateContractGas({
         address: campaignAddress,
@@ -323,6 +351,32 @@ export const createStakingSDK = (windowProvider = null) => {
         account: userAddress,
         gas,
       });
+    },
+
+    // --- 代币管理 ---
+    async addTokenToWallet(tokenAddress, symbol, decimals, image = null) {
+      if (!window.ethereum) {
+        throw new Error('MetaMask 未连接');
+      }
+      
+      try {
+        await window.ethereum.request({
+          method: 'wallet_watchAsset',
+          params: {
+            type: 'ERC20',
+            options: {
+              address: tokenAddress,
+              symbol: symbol,
+              decimals: decimals,
+              image: image,
+            },
+          },
+        });
+        return true;
+      } catch (error) {
+        console.error('添加代币失败:', error);
+        return false;
+      }
     },
   };
 };

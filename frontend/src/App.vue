@@ -230,7 +230,7 @@ body {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.22fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.5fr);
   gap: 0 20px;
   align-items: start;
 }
@@ -277,7 +277,7 @@ body {
   line-height: 1.45;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1000px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
     gap: 20px 0;

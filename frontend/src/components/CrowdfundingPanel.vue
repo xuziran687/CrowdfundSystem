@@ -81,9 +81,9 @@
           <div class="actions-grid">
             
             <button type="button" @click="handlePledge" :disabled="isProcessing || !pledgeAmount" class="action-btn">认购</button>
-            <button type="button" @click="handleClaim" :disabled="isProcessing || !selectedCampaignInfo.finalized || !selectedCampaignInfo.success" class="action-btn">Claim</button>
+            <button type="button" @click="handleClaim" :disabled="isProcessing || !selectedCampaignInfo.finalized || !selectedCampaignInfo.success" class="action-btn">领取</button>
             <button type="button" @click="handleRefund" :disabled="isProcessing || !selectedCampaignInfo.finalized || selectedCampaignInfo.success" class="action-btn warn">退款</button>
-            <button type="button" @click="handleFinalize" :disabled="isProcessing || !canFinalize" class="action-btn primary">Finalize</button>
+            <button type="button" @click="handleFinalize" :disabled="isProcessing || !canFinalize" class="action-btn primary">结束</button>
             <button type="button" @click="handleWithdrawRaised" :disabled="isProcessing || !canWithdrawRaised" class="action-btn">提取募集款</button>
             <button type="button" @click="handleWithdrawDeposit" :disabled="isProcessing || !canWithdrawDeposit" class="action-btn">提取保证金</button>
           </div>
@@ -307,7 +307,35 @@ async function handleClaim() {
 
   try {
     await wallet.sdk.claimCampaign(selectedCampaign.value, wallet.account);
-    status.value = '✅ 领取成功';
+    status.value = '✅ 领取成功，正在自动添加代币到 MetaMask...';
+    
+    // 获取代币信息并添加到 MetaMask
+    if (selectedCampaignInfo.value?.tokenAddress) {
+      const tokenSymbol = selectedCampaignInfo.value.symbol || 'TOKEN';
+      const tokenDecimals = selectedCampaignInfo.value.decimals || 18; // 使用合约返回的小数位数，默认为18
+      try {
+        const success = await wallet.sdk.addTokenToWallet(
+          selectedCampaignInfo.value.tokenAddress,
+          tokenSymbol,
+          tokenDecimals // 使用从合约获取的小数位数
+        );
+        
+        if (success) {
+          status.value = `✅ 领取成功，代币已成功添加到 MetaMask (小数位数: ${tokenDecimals})`;
+        } else {
+          status.value = '⚠️ 领取成功，但自动添加代币失败，请手动添加到 MetaMask';
+          isError.value = true;
+        }
+      } catch (tokenErr) {
+        console.error('添加代币到 MetaMask 失败:', tokenErr);
+        status.value = '⚠️ 领取成功，但添加代币时出错，请手动添加到 MetaMask';
+        isError.value = true;
+      }
+    } else {
+      status.value = '⚠️ 领取成功，但无法获取代币地址，请手动添加到 MetaMask';
+      isError.value = true;
+    }
+    
     await selectCampaign(selectedCampaign.value);
   } catch (err) {
     console.error('领取失败', err);
@@ -588,7 +616,8 @@ async function handleWithdrawDeposit() {
 .user-info h4 {
   margin: 0 0 8px;
   font-size: 0.95rem;
-}.pledge-input-row {
+}
+.pledge-input-row {
   margin-bottom: 12px;
 }
 .actions-grid {

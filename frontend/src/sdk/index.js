@@ -31,8 +31,15 @@ export const createStakingSDK = (windowProvider = null) => {
     });
   }
 
-  const weiToEther = (data) => (data === undefined ? '0' : formatEther(data));
-
+ const formatEthValue = (value, decimalPlaces = 4) => {
+  if (value === undefined) return '0';
+  const formatted = formatEther(value);
+  const [integer, fraction] = formatted.split('.');
+  if (!fraction) return integer;
+  return `${integer}.${fraction.slice(0, Math.min(decimalPlaces,
+      fraction.length))}`;
+  };
+  const weiToEther = (data) => formatEthValue(data);
   const readStaking = (functionName, args = []) =>
     publicClient.readContract({
       address: STAKING_ADDR,

@@ -74,12 +74,12 @@
             <p><strong>名义贡献:</strong> {{ selectedUserInfo.contribution }} ETH</p>
             <p><strong>实际支付 ETH:</strong> {{ selectedUserInfo.ethContributed }} ETH</p>
           </div>
-
-          <div class="actions-grid">
-            <div class="field-row small">
+          <div class="field-row small">
               <label>认购 ETH</label>
               <input v-model="pledgeAmount" type="number" step="0.01" min="0" placeholder="输入 ETH" />
             </div>
+          <div class="actions-grid">
+            
             <button type="button" @click="handlePledge" :disabled="isProcessing || !pledgeAmount" class="action-btn">认购</button>
             <button type="button" @click="handleClaim" :disabled="isProcessing || !selectedCampaignInfo.finalized || !selectedCampaignInfo.success" class="action-btn">Claim</button>
             <button type="button" @click="handleRefund" :disabled="isProcessing || !selectedCampaignInfo.finalized || selectedCampaignInfo.success" class="action-btn warn">退款</button>
@@ -588,11 +588,12 @@ async function handleWithdrawDeposit() {
 .user-info h4 {
   margin: 0 0 8px;
   font-size: 0.95rem;
+}.pledge-input-row {
+  margin-bottom: 12px;
 }
-
 .actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
   margin-top: 12px;
 }

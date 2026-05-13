@@ -14,7 +14,7 @@ contract ProjectToken is ERC20 {
         _mint(msg.sender, supply * 10**DECIMALS);
     }
     
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return DECIMALS;
     }
 }

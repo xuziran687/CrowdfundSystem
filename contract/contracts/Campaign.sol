@@ -65,6 +65,7 @@ contract Campaign {
     function pledge() external payable {
         require(!finalized, "Campaign closed");
         require(msg.value > 0, "Need ETH");
+        require(msg.sender != creator, "Creator cannot pledge");
 
         // 计算折扣率
         uint256 d = MathLogic.calculateDiscount(
@@ -108,6 +109,7 @@ contract Campaign {
 
     function claim() external {
         require(finalized && success, "Not success");
+        require(msg.sender != creator, "Creator cannot claim");
         uint256 userC = contribution[msg.sender];
         require(userC > 0, "No contribution");
         require(totalContribution > 0, "No total contribution");
@@ -127,7 +129,6 @@ contract Campaign {
         uint256 paid = ethContributed[msg.sender];
         require(paid > 0, "No contribution");
 
-        // Checks-Effects-Interactions 模式
         ethContributed[msg.sender] = 0;
         payable(msg.sender).transfer(paid);
         emit Refunded(msg.sender, paid);

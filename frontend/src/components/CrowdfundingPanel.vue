@@ -142,7 +142,7 @@
               <label>认购金额</label>
               <div class="pledge-row">
                 <input v-model="pledgeAmount" type="number" step="0.01" min="0" placeholder="输入 ETH" />
-                <button type="button" @click="handlePledge" :disabled="isProcessing || !pledgeAmount" class="action-btn pledge-btn">认购</button>
+                <button type="button" @click="handlePledge" :disabled="isProcessing || !pledgeAmount || isCreator" class="action-btn pledge-btn">认购</button>
               </div>
             </div>
           </div>
@@ -152,11 +152,11 @@
             <div class="actions-group">
               <h4>参与者操作</h4>
               <div class="actions-row">
-                <button type="button" @click="handleClaim" :disabled="isProcessing || !selectedCampaignInfo.finalized || !selectedCampaignInfo.success" class="action-btn claim-btn">
-                  🪙 领取代币
+                <button type="button" @click="handleClaim" :disabled="isProcessing || !selectedCampaignInfo.finalized || !selectedCampaignInfo.success || isCreator || hasClaimed" class="action-btn claim-btn">
+                  {{ hasClaimed ? '✅ 已领取' : '🪙 领取代币' }}
                 </button>
-                <button type="button" @click="handleRefund" :disabled="isProcessing || !selectedCampaignInfo.finalized || selectedCampaignInfo.success" class="action-btn warn-btn">
-                  💰 退款
+                <button type="button" @click="handleRefund" :disabled="isProcessing || !selectedCampaignInfo.finalized || selectedCampaignInfo.success || isCreator || hasRefunded" class="action-btn warn-btn">
+                  {{ hasRefunded ? '✅ 已退款' : '💰 退款' }}
                 </button>
               </div>
             </div>
@@ -249,6 +249,23 @@ const canWithdrawRaised = computed(() => {
 const canWithdrawDeposit = computed(() => {
   const acc = wallet?.account;
   return selectedCampaignInfo.value && acc && selectedCampaignInfo.value.creator.toLowerCase() === acc.toLowerCase() && selectedCampaignInfo.value.finalized && !selectedCampaignInfo.value.depositWithdrawn;
+});
+
+const isCreator = computed(() => {
+  const acc = wallet?.account;
+  return selectedCampaignInfo.value && acc && selectedCampaignInfo.value.creator.toLowerCase() === acc.toLowerCase();
+});
+
+const hasClaimed = computed(() => {
+  return selectedCampaignInfo.value?.finalized && selectedCampaignInfo.value?.success
+    && selectedUserInfo.value && parseFloat(selectedUserInfo.value.contribution) === 0
+    && parseFloat(selectedUserInfo.value.ethContributed) > 0;
+});
+
+const hasRefunded = computed(() => {
+  return selectedCampaignInfo.value?.finalized && !selectedCampaignInfo.value?.success
+    && selectedUserInfo.value && parseFloat(selectedUserInfo.value.ethContributed) === 0
+    && parseFloat(selectedUserInfo.value.contribution) > 0;
 });
 
 watch(

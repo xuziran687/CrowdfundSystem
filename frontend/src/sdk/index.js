@@ -32,15 +32,27 @@ export const createStakingSDK = (windowProvider = null) => {
     });
   }
 
- const formatEthValue = (value, decimalPlaces = 4) => {
-  if (value === undefined) return '0';
-  const formatted = formatEther(value);
-  const [integer, fraction] = formatted.split('.');
-  if (!fraction) return integer;
-  return `${integer}.${fraction.slice(0, Math.min(decimalPlaces,
-      fraction.length))}`;
+  const formatEthValue = (value, decimalPlaces = 4) => {
+   if (value === undefined) return '0';
+   const formatted = formatEther(value);
+   const [integer, fraction] = formatted.split('.');
+   if (!fraction) return integer;
+   return `${integer}.${fraction.slice(0, Math.min(decimalPlaces,
+       fraction.length))}`;
+   };
+   const weiToEther = (data) => formatEthValue(data);
+
+  // R 代币固定 18 位精度，但不应使用 formatEther（ETH 语义），
+  // 提供独立的格式化函数，保证 R 作为独立奖励单位的展示正确
+  const formatRValue = (value, decimalPlaces = 4) => {
+    if (value === undefined) return '0';
+    // R 与 ETH 一样是 18 位精度，使用 formatEther 转换数值
+    // 但保留独立函数以便后续调整 R 的展示逻辑
+    const formatted = formatEther(value);
+    const [integer, fraction] = formatted.split('.');
+    if (!fraction) return integer;
+    return `${integer}.${fraction.slice(0, Math.min(decimalPlaces, fraction.length))}`;
   };
-  const weiToEther = (data) => formatEthValue(data);
   const readStaking = (functionName, args = []) =>
     publicClient.readContract({
       address: STAKING_ADDR,
@@ -80,7 +92,7 @@ export const createStakingSDK = (windowProvider = null) => {
     },
 
     async getVaultTotalR() {
-      return weiToEther(await readStaking('totalR'));
+      return formatRValue(await readStaking('totalR'));
     },
 
     async getWalletBalance(userAddress) {
@@ -112,7 +124,7 @@ export const createStakingSDK = (windowProvider = null) => {
     },
 
     async getEarned(userAddress) {
-      return weiToEther(await readStaking('userR', [userAddress]));
+      return formatRValue(await readStaking('userR', [userAddress]));
     },
 
     async getStakedAmount(userAddress) {

@@ -43,7 +43,7 @@ export function useWallet() {
               chainId: HARDHAT_CHAIN_ID,
               chainName: 'Hardhat Local',
               nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['http://127.0.0.1:8545'],
+              rpcUrls: [`http://${window.location.hostname}:8545`],
             }],
           });
         } else {

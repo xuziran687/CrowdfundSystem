@@ -61,7 +61,7 @@ contract Campaign {
         token = new ProjectToken(name, symbol, _totalToken);
         deposit = msg.value;
     }
-
+    // 用户质押ETH参与众筹活动
     function pledge() external payable {
         require(!finalized, "Campaign closed");
         require(msg.value > 0, "Need ETH");

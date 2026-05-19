@@ -5,7 +5,7 @@ import "./Campaign.sol";
 import "./interfaces/IStakingVault.sol";
 
 contract CrowdfundFactory {
-    address[] public allCampaigns;
+    address[] public allCampaigns;// 众筹列表
     address public globalVault;
     uint256 public minDeposit;
 

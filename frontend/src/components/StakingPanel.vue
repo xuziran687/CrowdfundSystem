@@ -13,7 +13,7 @@
         <div class="stat-icon">💎</div>
         <div class="stat-content">
           <span class="stat-label">可抵扣 R</span>
-          <strong class="stat-value highlight">{{ earned }}</strong>
+          <strong class="stat-value highlight">{{ earned }} <span class="stat-unit">R</span></strong>
         </div>
       </div>
     </div>
@@ -93,7 +93,7 @@
       </div>
       <div class="sec-stat">
         <span class="sec-label">📊 金库总 R</span>
-        <strong class="sec-value">{{ vaultTotalR }}</strong>
+        <strong class="sec-value">{{ vaultTotalR }} <span class="stat-unit">R</span></strong>
       </div>
     </div>
 
@@ -301,6 +301,13 @@ async function handleUnstake() {
 .stat-value.highlight {
   font-weight: 800;
   letter-spacing: -0.01em;
+}
+
+.stat-unit {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: normal;
 }
 
 /* 抵扣率进度条 */

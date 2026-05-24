@@ -1,4 +1,21 @@
 {
     "commentTranslate.source": "Bing",
-    "commentTranslate.targetLanguage": "zh-CN"
+    "commentTranslate.targetLanguage": "zh-CN",
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "fedora",
+            "group": "longan",
+            "username": "root",
+            "database": "longan_apex"
+        }
+    ]
 }

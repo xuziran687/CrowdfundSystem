@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "./Campaign.sol";
 import "./interfaces/IStakingVault.sol";
-
+// 众筹工厂
 contract CrowdfundFactory {
     address[] public allCampaigns;// 众筹列表
     address public globalVault;

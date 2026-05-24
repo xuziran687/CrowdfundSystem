@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./interfaces/IStakingVault.sol";
-
+// 质押合约
 contract StakingVault is IStakingVault {
     struct UserInfo {
         uint256 amount;
@@ -60,7 +60,6 @@ contract StakingVault is IStakingVault {
             lastRewardTimestamp = block.timestamp;
             return;
         }
-
         uint256 elapsed = block.timestamp - lastRewardTimestamp;
         uint256 reward = _rewardAccrued(elapsed);
         storedTotalR += reward;
@@ -74,7 +73,6 @@ contract StakingVault is IStakingVault {
             u.rewardDebt = 0;
             return;
         }
-
         uint256 accumulated = (u.amount * accRPerETH) / REWARD_PRECISION;
         uint256 pending = accumulated - u.rewardDebt;
         if (pending > 0) {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-
+// 质押合约接口
 interface IStakingVault {
     function totalETH() external view returns (uint256);
     function totalR() external view returns (uint256);

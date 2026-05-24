@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+// 项目代币
 contract ProjectToken is ERC20 {
     uint8 private constant DECIMALS = 18;
     

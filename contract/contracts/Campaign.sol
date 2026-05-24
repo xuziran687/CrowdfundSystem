@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "./ProjectToken.sol";
 import "./interfaces/IStakingVault.sol";
 import "./MathLogic.sol";
-
+// 众筹活动
 contract Campaign {
     // 基本参数
     address public creator;
@@ -66,7 +66,6 @@ contract Campaign {
         require(!finalized, "Campaign closed");
         require(msg.value > 0, "Need ETH");
         require(msg.sender != creator, "Creator cannot pledge");
-
         // 计算折扣率
         uint256 d = MathLogic.calculateDiscount(
             vault.totalR(),
@@ -76,28 +75,24 @@ contract Campaign {
             DISCOUNT_A_REF,
             DISCOUNT_K
         );
-
         // 计算可抵扣的奖励金额
         uint256 maxREquivalent = (vault.userR(msg.sender) * d) / 1e18;
         uint256 maxAllowed = (msg.value * maxDeductionRatio) / 10000;
         uint256 actualREquivalent = maxREquivalent > maxAllowed ? maxAllowed : maxREquivalent;
-
         // 消耗用户的奖励代币
         if (actualREquivalent > 0) {
             uint256 rToBurn = (actualREquivalent * 1e18) / d;
             vault.spendR(msg.sender, rToBurn);
         }
-
         // 更新贡献记录
         uint256 nominal = msg.value + actualREquivalent;
         contribution[msg.sender] += nominal;
         ethContributed[msg.sender] += msg.value;
         totalContribution += nominal;
         raised += msg.value;
-
         emit Pledged(msg.sender, msg.value, actualREquivalent, nominal);
     }
-
+    // 众筹活动结束
     function finalize() external {
         require(msg.sender == creator, "Not creator");
         require(!finalized, "Already finalized");
@@ -106,7 +101,7 @@ contract Campaign {
         success = raised >= target;
         emit Finalized(success);
     }
-
+    // 众筹活动成功，用户领取代币
     function claim() external {
         require(finalized && success, "Not success");
         require(msg.sender != creator, "Creator cannot claim");
@@ -123,7 +118,7 @@ contract Campaign {
         token.transfer(msg.sender, share);
         emit Claimed(msg.sender, share);
     }
-
+    // 众筹活动失败，用户退回ETH
     function refund() external {
         require(finalized && !success, "Refund unavailable");
         uint256 paid = ethContributed[msg.sender];
@@ -133,7 +128,7 @@ contract Campaign {
         payable(msg.sender).transfer(paid);
         emit Refunded(msg.sender, paid);
     }
-
+    // 众筹活动结束，众筹ETH退回
     function withdrawRaised() external {
         require(finalized && success, "Withdrawal unavailable");
         require(msg.sender == creator, "Not creator");
@@ -142,8 +137,8 @@ contract Campaign {
         raisedWithdrawn = true;
         payable(creator).transfer(raised);
         emit RaisedWithdrawn(raised);
-    }
-
+    }  
+    // 众筹活动结束，众筹金库退回
     function withdrawDeposit() external {
         require(finalized, "Not finalized");
         require(msg.sender == creator, "Not creator");

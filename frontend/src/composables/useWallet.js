@@ -1,7 +1,7 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 import { createStakingSDK } from '../sdk/index.js';
 
-const HARDHAT_CHAIN_ID = '0x7a69';
+const HARDHAT_CHAIN_ID = '0x7a69';// 31337
 
 export function useWallet() {
   const account = ref(null);

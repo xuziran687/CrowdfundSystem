@@ -107,22 +107,18 @@ nominalContribution = msg.value + actualREquivalent
 ### 步骤
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/xuziran687/CrowdfundSystem.git
-cd CrowdfundSystem
-
-# 2. 安装合约依赖 & 编译
+# 1. 安装合约依赖 & 编译
 cd contract
 npm install
 npx hardhat compile
 
-# 3. 启动 Hardhat 本地节点（保持终端运行，--hostname 0.0.0.0 允许局域网访问）
+# 2. 启动 Hardhat 本地节点（保持终端运行，--hostname 0.0.0.0 允许局域网访问）
 npx hardhat node --hostname 0.0.0.0
 
-# 4. 新终端窗口 — 部署合约（自动生成地址并同步到前端）
+# 3. 新终端窗口 — 部署合约（自动生成地址并同步到前端）
 npx hardhat run scripts/deploy.js --network localhost
 
-# 5. 安装并启动前端
+# 4. 安装并启动前端
 cd ../frontend
 npm install
 npm run dev
@@ -141,8 +137,6 @@ npm run dev
    - **RPC URL**: `http://你机器的局域网IP:8545`（例如 `http://192.168.1.100:8545`）
    - **链 ID**: `31337`
    - **货币符号**: `ETH`
-
-### 运行测试
 
 
 ### 运行测试

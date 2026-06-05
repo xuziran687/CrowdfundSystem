@@ -12,7 +12,7 @@ provide('wallet', wallet);
   <div id="app" class="app">
     <header class="app-topbar">
       <div class="brand">
-        <div class="app-title">Solidity Demo</div>
+        <div class="app-title">基于区块链的众筹系统</div>
         <div class="app-subtitle">金库质押与众筹工厂 · 本地 Hardhat</div>
       </div>
       <div class="wallet-actions">

@@ -136,7 +136,8 @@ contract StakingVault is IStakingVault {
         u.rewardDebt = (u.amount * accRPerETH) / REWARD_PRECISION;
         totalETH -= amount;
 
-        payable(msg.sender).transfer(amount);
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        require(ok, "ETH transfer failed");
         emit Unstaked(msg.sender, amount);
     }
 
@@ -175,4 +176,8 @@ contract StakingVault is IStakingVault {
         emit FactoryUpdated(factory, _factory);
         factory = _factory;
     }
+
+    // 接收 ETH（stake() 已通过 payable 接收，此函数防止直接转账丢失 ETH）
+    receive() external payable {}
+    fallback() external payable {}
 }

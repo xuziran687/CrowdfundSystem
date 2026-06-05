@@ -134,7 +134,7 @@ export const createStakingSDK = (windowProvider = null) => {
     },
 
     async getCampaignInfo(campaignAddress) {
-      const [creator, target, raised, totalContribution, maxDeductionRatio, deposit, finalized, success, raisedWithdrawn, depositWithdrawn, tokenAddress] = await Promise.all([
+      const [creator, target, raised, totalContribution, maxDeductionRatio, deposit, finalized, success, raisedWithdrawn, depositWithdrawn, tokenAddress, deadline, isExpired, contributorsLength, tokensSwept] = await Promise.all([
         readCampaign(campaignAddress, 'creator'),
         readCampaign(campaignAddress, 'target'),
         readCampaign(campaignAddress, 'raised'),
@@ -146,6 +146,10 @@ export const createStakingSDK = (windowProvider = null) => {
         readCampaign(campaignAddress, 'raisedWithdrawn'),
         readCampaign(campaignAddress, 'depositWithdrawn'),
         readCampaign(campaignAddress, 'token'),
+        readCampaign(campaignAddress, 'deadline'),
+        readCampaign(campaignAddress, 'isExpired'),
+        readCampaign(campaignAddress, 'contributorsLength'),
+        readCampaign(campaignAddress, 'tokensSwept'),
       ]);
       
       // 获取代币符号和小数位数
@@ -175,9 +179,13 @@ export const createStakingSDK = (windowProvider = null) => {
         success,
         raisedWithdrawn,
         depositWithdrawn,
+        tokensSwept,
         tokenAddress,
         symbol,
         decimals,
+        deadline: Number(deadline),
+        isExpired,
+        contributorsCount: Number(contributorsLength),
       };
     },
 
@@ -192,9 +200,9 @@ export const createStakingSDK = (windowProvider = null) => {
       };
     },
 
-    async createCampaign(userAddress, target, totalToken, ratio, name, symbol, deposit) {
+    async createCampaign(userAddress, target, totalToken, ratio, name, symbol, deposit, deadline) {
       if (!walletClient) throw new Error('钱包未连接');
-      const args = [parseEther(target), BigInt(totalToken) * 10n**18n, BigInt(ratio), name, symbol];
+      const args = [parseEther(target), BigInt(totalToken) * 10n**18n, BigInt(ratio), name, symbol, BigInt(deadline)];
       const value = parseEther(String(deposit || '0'));
       const gas = await publicClient.estimateContractGas({
         address: CROWDFUND_FACTORY_ADDR,
@@ -284,6 +292,40 @@ export const createStakingSDK = (windowProvider = null) => {
         address: campaignAddress,
         abi: CAMPAIGN_ABI,
         functionName: 'refund',
+        account: userAddress,
+        gas,
+      });
+    },
+
+    async claimRefund(campaignAddress, userAddress) {
+      if (!walletClient) throw new Error('钱包未连接');
+      const gas = await publicClient.estimateContractGas({
+        address: campaignAddress,
+        abi: CAMPAIGN_ABI,
+        functionName: 'claimRefund',
+        account: userAddress,
+      });
+      return await walletClient.writeContract({
+        address: campaignAddress,
+        abi: CAMPAIGN_ABI,
+        functionName: 'claimRefund',
+        account: userAddress,
+        gas,
+      });
+    },
+
+    async sweepUnclaimedTokens(campaignAddress, userAddress) {
+      if (!walletClient) throw new Error('钱包未连接');
+      const gas = await publicClient.estimateContractGas({
+        address: campaignAddress,
+        abi: CAMPAIGN_ABI,
+        functionName: 'sweepUnclaimedTokens',
+        account: userAddress,
+      });
+      return await walletClient.writeContract({
+        address: campaignAddress,
+        abi: CAMPAIGN_ABI,
+        functionName: 'sweepUnclaimedTokens',
         account: userAddress,
         gas,
       });

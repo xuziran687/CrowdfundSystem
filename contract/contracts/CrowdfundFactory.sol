@@ -25,7 +25,8 @@ contract CrowdfundFactory {
         uint256 totalToken,
         uint256 ratio,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        uint256 deadline
     ) external payable {
         require(msg.value >= minDeposit, "Deposit required");
 
@@ -36,7 +37,8 @@ contract CrowdfundFactory {
             ratio,
             globalVault,
             name,
-            symbol
+            symbol,
+            deadline
         );
 
         address campaignAddr = address(newCampaign);
@@ -45,4 +47,8 @@ contract CrowdfundFactory {
 
         emit CampaignCreated(campaignAddr, msg.sender, msg.value);
     }
+
+    // 接收 ETH（防止直接转账丢失 ETH）
+    receive() external payable {}
+    fallback() external payable {}
 }

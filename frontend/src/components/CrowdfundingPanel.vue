@@ -45,6 +45,23 @@
               <input v-model="createSymbol" type="text" placeholder="代币符号" />
             </div>
             <div class="field-row">
+              <label>持续时间</label>
+              <div class="duration-inputs">
+                <div class="dur-field">
+                  <input v-model="createDays" type="number" min="0" placeholder="0" />
+                  <span class="dur-unit">天</span>
+                </div>
+                <div class="dur-field">
+                  <input v-model="createHours" type="number" min="0" max="23" placeholder="0" />
+                  <span class="dur-unit">时</span>
+                </div>
+                <div class="dur-field">
+                  <input v-model="createMinutes" type="number" min="0" max="59" placeholder="0" />
+                  <span class="dur-unit">分</span>
+                </div>
+              </div>
+            </div>
+            <div class="field-row">
               <label>保证金 ETH</label>
               <input v-model="createDeposit" type="number" step="0.01" min="0" placeholder="保证金 ETH" />
             </div>
@@ -79,8 +96,8 @@
         <section v-if="selectedCampaignInfo" class="box campaign-detail">
           <div class="detail-header">
             <h3>Campaign 详情</h3>
-            <span :class="['status-badge', selectedCampaignInfo.finalized ? (selectedCampaignInfo.success ? 'badge-success' : 'badge-fail') : 'badge-active']">
-              {{ selectedCampaignInfo.finalized ? (selectedCampaignInfo.success ? '✅ 成功' : '❌ 失败') : '🔄 进行中' }}
+            <span :class="['status-badge', selectedCampaignInfo.finalized ? (selectedCampaignInfo.success ? 'badge-success' : 'badge-fail') : (isExpiredNow ? 'badge-expired' : 'badge-active')]">
+              {{ selectedCampaignInfo.finalized ? (selectedCampaignInfo.success ? '✅ 成功' : '❌ 失败') : (isExpiredNow ? '⏰ 已到期' : '🔄 进行中') }}
             </span>
           </div>
 
@@ -98,6 +115,7 @@
             <div class="progress-meta">
               <span>名义总额: {{ selectedCampaignInfo.totalContribution }} ETH</span>
               <span>抵扣上限: {{ selectedCampaignInfo.maxDeductionRatio }} BPS</span>
+              <span>参与人数: {{ selectedCampaignInfo.contributorsCount }}</span>
             </div>
           </div>
 
@@ -119,72 +137,134 @@
               <span class="di-label">代币合约</span>
               <code class="di-value">{{ selectedCampaignInfo.tokenAddress }}</code>
             </div>
-          </div>
-
-          <!-- 我的参与 -->
-          <div class="user-section">
-            <h4>🎯 我的参与</h4>
-            <div class="user-stats">
-              <div class="us-item">
-                <span class="us-label">名义贡献</span>
-                <strong class="us-value">{{ selectedUserInfo.contribution }} ETH</strong>
-              </div>
-              <div class="us-item">
-                <span class="us-label">实际支付</span>
-                <strong class="us-value">{{ selectedUserInfo.ethContributed }} ETH</strong>
-              </div>
+            <div class="detail-item">
+              <span class="di-label">截止时间</span>
+              <strong :class="['di-value', { 'text-red': isExpiredNow }]">
+                {{ formatDeadline(selectedCampaignInfo.deadline) }}
+                {{ isExpiredNow ? '（已过期）' : '' }}
+              </strong>
             </div>
           </div>
 
-          <!-- 认购输入 -->
-          <div class="pledge-section">
-            <div class="pledge-input">
-              <label>认购金额</label>
-              <div class="pledge-row">
-                <input v-model="pledgeAmount" type="number" step="0.01" min="0" placeholder="输入 ETH" />
-                <button type="button" @click="handlePledge" :disabled="isProcessing || !pledgeAmount || isCreator" class="action-btn pledge-btn">认购</button>
+          <!-- ===== 创建者视图 ===== -->
+          <template v-if="isCreator">
+            <!-- 创建者信息 -->
+            <div class="user-section creator-section">
+              <h4>👑 创建者面板</h4>
+              <div class="user-stats">
+                <div class="us-item">
+                  <span class="us-label">保证金</span>
+                  <strong class="us-value">{{ selectedCampaignInfo.deposit }} ETH</strong>
+                </div>
+                <div class="us-item">
+                  <span class="us-label">募集款</span>
+                  <strong class="us-value">{{ selectedCampaignInfo.raised }} ETH</strong>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- 操作按钮 -->
-          <div class="actions-area">
-            <div class="actions-group">
-              <h4>参与者操作</h4>
-              <div class="actions-row">
-                <button type="button" @click="handleClaim" :disabled="isProcessing || !selectedCampaignInfo.finalized || !selectedCampaignInfo.success || isCreator || hasClaimed" class="action-btn claim-btn">
-                  {{ hasClaimed ? '✅ 已领取' : '🪙 领取代币' }}
-                </button>
-                <button type="button" @click="handleRefund" :disabled="isProcessing || !selectedCampaignInfo.finalized || selectedCampaignInfo.success || isCreator || hasRefunded" class="action-btn warn-btn">
-                  {{ hasRefunded ? '✅ 已退款' : '💰 退款' }}
-                </button>
+            <!-- 创建者操作 -->
+            <div class="actions-area">
+              <div class="actions-group">
+                <h4>创建者操作</h4>
+                <div class="actions-row">
+                  <button type="button" @click="handleFinalize" :disabled="isProcessing || !canFinalize" class="action-btn primary-btn">
+                    ⏹ 结束众筹
+                  </button>
+                  <button type="button" @click="handleWithdrawRaised" :disabled="isProcessing || !canWithdrawRaised" class="action-btn withdraw-btn">
+                    💵 提取募集款
+                  </button>
+                  <button type="button" @click="handleWithdrawDeposit" :disabled="isProcessing || !canWithdrawDeposit" class="action-btn deposit-btn">
+                    🔐 提取保证金
+                  </button>
+                  <button v-if="selectedCampaignInfo.success && selectedCampaignInfo.finalized" type="button" @click="handleSweepTokens" :disabled="isProcessing || selectedCampaignInfo.tokensSwept || !canSweepTokens" class="action-btn deposit-btn">
+                    {{ selectedCampaignInfo.tokensSwept ? '✅ 已扫回' : '🧹 扫回未领取代币' }}
+                  </button>
+                </div>
               </div>
             </div>
-            <div class="actions-group" v-if="selectedCampaignInfo.creator.toLowerCase() === wallet?.account?.toLowerCase()">
-              <h4>创建者操作</h4>
-              <div class="actions-row">
-                <button type="button" @click="handleFinalize" :disabled="isProcessing || !canFinalize" class="action-btn primary-btn">
-                  ⏹ 结束众筹
-                </button>
-                <button type="button" @click="handleWithdrawRaised" :disabled="isProcessing || !canWithdrawRaised" class="action-btn withdraw-btn">
-                  💵 提取募集款
-                </button>
-                <button type="button" @click="handleWithdrawDeposit" :disabled="isProcessing || !canWithdrawDeposit" class="action-btn deposit-btn">
-                  🔐 提取保证金
-                </button>
-              </div>
-            </div>
-          </div>
 
-          <!-- 提取状态 -->
-          <div class="withdraw-status" v-if="selectedCampaignInfo.finalized">
-            <div class="ws-item" :class="{ done: selectedCampaignInfo.raisedWithdrawn }">
-              {{ selectedCampaignInfo.raisedWithdrawn ? '✅' : '⏳' }} 募集款{{ selectedCampaignInfo.raisedWithdrawn ? '已提取' : '未提取' }}
+            <!-- 提取状态 -->
+            <div class="withdraw-status" v-if="selectedCampaignInfo.finalized">
+              <div class="ws-item" :class="{ done: selectedCampaignInfo.raisedWithdrawn }">
+                {{ selectedCampaignInfo.raisedWithdrawn ? '✅' : '⏳' }} 募集款{{ selectedCampaignInfo.raisedWithdrawn ? '已提取' : '未提取' }}
+              </div>
+              <div class="ws-item" :class="{ done: selectedCampaignInfo.depositWithdrawn }">
+                {{ selectedCampaignInfo.depositWithdrawn ? '✅' : '⏳' }} 保证金{{ selectedCampaignInfo.depositWithdrawn ? '已提取' : '未提取' }}
+              </div>
             </div>
-            <div class="ws-item" :class="{ done: selectedCampaignInfo.depositWithdrawn }">
-              {{ selectedCampaignInfo.depositWithdrawn ? '✅' : '⏳' }} 保证金{{ selectedCampaignInfo.depositWithdrawn ? '已提取' : '未提取' }}
+          </template>
+
+          <!-- ===== 非创建者视图（参与者 / 浏览者） ===== -->
+          <template v-else>
+            <!-- 我的参与 -->
+            <div class="user-section" v-if="hasParticipated">
+              <h4>🎯 我的参与</h4>
+              <div class="user-stats">
+                <div class="us-item">
+                  <span class="us-label">名义贡献</span>
+                  <strong class="us-value">{{ selectedUserInfo.contribution }} ETH</strong>
+                </div>
+                <div class="us-item">
+                  <span class="us-label">实际支付</span>
+                  <strong class="us-value">{{ selectedUserInfo.ethContributed }} ETH</strong>
+                </div>
+              </div>
             </div>
-          </div>
+
+            <!-- 认购输入（进行中 & 未过期才显示） -->
+            <div class="pledge-section" v-if="!selectedCampaignInfo.finalized && !isExpiredNow">
+              <div class="pledge-input">
+                <label>认购金额</label>
+                <div class="pledge-row">
+                  <input v-model="pledgeAmount" type="number" step="0.01" min="0" placeholder="输入 ETH" />
+                  <button type="button" @click="handlePledge" :disabled="isProcessing || !pledgeAmount" class="action-btn pledge-btn">认购</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 参与者操作 -->
+            <div class="actions-area">
+              <!-- 众筹成功 → 领取代币 -->
+              <div class="actions-group" v-if="selectedCampaignInfo.success && selectedCampaignInfo.finalized">
+                <h4>参与者操作</h4>
+                <div class="actions-row">
+                  <button v-if="hasParticipated" type="button" @click="handleClaim" :disabled="isProcessing || hasClaimed" class="action-btn claim-btn">
+                    {{ hasClaimed ? '✅ 已领取' : '🪙 领取代币' }}
+                  </button>
+                  <div v-if="!hasParticipated" class="auto-refund-notice">
+                    ℹ️ 你未参与此众筹
+                  </div>
+                </div>
+              </div>
+
+              <!-- 众筹失败 → 退款 -->
+              <div class="actions-group" v-if="!selectedCampaignInfo.success && selectedCampaignInfo.finalized">
+                <h4>参与者操作</h4>
+                <div class="actions-row">
+                  <div v-if="hasRefunded" class="auto-refund-notice">
+                    💰 退款已到账
+                  </div>
+                  <button v-else-if="hasParticipated" type="button" @click="handleClaimRefund" :disabled="isProcessing" class="action-btn warn-btn">
+                    💰 手动领取退款
+                  </button>
+                  <div v-else class="auto-refund-notice">
+                    ℹ️ 你未参与此众筹
+                  </div>
+                </div>
+              </div>
+
+              <!-- 众筹进行中且已过期 → 任何人都可结束 -->
+              <div class="actions-group" v-if="isExpiredNow && !selectedCampaignInfo.finalized">
+                <h4>到期操作</h4>
+                <div class="actions-row">
+                  <button type="button" @click="handleFinalize" :disabled="isProcessing" class="action-btn primary-btn">
+                    ⏹ 结束众筹
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
         </section>
         <div v-else class="empty-detail box">
           <div class="empty-icon">👈</div>
@@ -205,6 +285,11 @@ import { CROWDFUND_FACTORY_ADDR } from '../sdk/contract.js';
 
 const wallet = inject('wallet', null);
 
+// 实时时间戳（每秒刷新），用于前端即时判断过期
+const nowTs = ref(Math.floor(Date.now() / 1000));
+const nowTimer = setInterval(() => { nowTs.value = Math.floor(Date.now() / 1000); }, 1000);
+onUnmounted(() => clearInterval(nowTimer));
+
 const status = ref('');
 const isProcessing = ref(false);
 const isError = ref(false);
@@ -220,10 +305,19 @@ const createTotalToken = ref('');
 const createRatio = ref('');
 const createName = ref('');
 const createSymbol = ref('');
+const createDays = ref('');
+const createHours = ref('');
+const createMinutes = ref('');
 const createDeposit = ref('0');
 const pledgeAmount = ref('');
 
 let campaignsPollTimer = null;
+
+function formatDeadline(timestamp) {
+  if (!timestamp) return '未设置';
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
 
 function stopCampaignPoll() {
   if (campaignsPollTimer) {
@@ -233,12 +327,15 @@ function stopCampaignPoll() {
 }
 
 const canCreate = computed(() => {
-  return createTarget.value > 0 && createTotalToken.value > 0 && createRatio.value > 0 && createName.value && createSymbol.value && createDeposit.value > 0;
+  const hasDuration = (Number(createDays.value) || 0) + (Number(createHours.value) || 0) + (Number(createMinutes.value) || 0) > 0;
+  return createTarget.value > 0 && createTotalToken.value > 0 && createRatio.value > 0 && createName.value && createSymbol.value && createDeposit.value > 0 && hasDuration;
 });
 
 const canFinalize = computed(() => {
   const acc = wallet?.account;
-  return selectedCampaignInfo.value && acc && selectedCampaignInfo.value.creator.toLowerCase() === acc.toLowerCase() && !selectedCampaignInfo.value.finalized;
+  if (!selectedCampaignInfo.value || !acc || selectedCampaignInfo.value.finalized) return false;
+  const isCreator = selectedCampaignInfo.value.creator.toLowerCase() === acc.toLowerCase();
+  return isCreator || isExpiredNow.value;
 });
 
 const canWithdrawRaised = computed(() => {
@@ -256,6 +353,16 @@ const isCreator = computed(() => {
   return selectedCampaignInfo.value && acc && selectedCampaignInfo.value.creator.toLowerCase() === acc.toLowerCase();
 });
 
+// 实时判断是否过期（不依赖合约返回的 isExpired 快照）
+const isExpiredNow = computed(() => {
+  if (!selectedCampaignInfo.value) return false;
+  return nowTs.value >= selectedCampaignInfo.value.deadline;
+});
+
+const hasParticipated = computed(() => {
+  return selectedUserInfo.value && parseFloat(selectedUserInfo.value.ethContributed) > 0;
+});
+
 const hasClaimed = computed(() => {
   return selectedCampaignInfo.value?.finalized && selectedCampaignInfo.value?.success
     && selectedUserInfo.value && parseFloat(selectedUserInfo.value.contribution) === 0
@@ -264,8 +371,18 @@ const hasClaimed = computed(() => {
 
 const hasRefunded = computed(() => {
   return selectedCampaignInfo.value?.finalized && !selectedCampaignInfo.value?.success
-    && selectedUserInfo.value && parseFloat(selectedUserInfo.value.ethContributed) === 0
-    && parseFloat(selectedUserInfo.value.contribution) > 0;
+    && selectedUserInfo.value && parseFloat(selectedUserInfo.value.ethContributed) === 0;
+});
+
+const canSweepTokens = computed(() => {
+  const acc = wallet?.account;
+  if (!selectedCampaignInfo.value || !acc) return false;
+  const deadline = selectedCampaignInfo.value.deadline;
+  const now = Math.floor(Date.now() / 1000);
+  return selectedCampaignInfo.value.creator.toLowerCase() === acc.toLowerCase()
+    && selectedCampaignInfo.value.finalized && selectedCampaignInfo.value.success
+    && !selectedCampaignInfo.value.tokensSwept
+    && now >= deadline + 90 * 86400;
 });
 
 watch(
@@ -320,8 +437,26 @@ async function selectCampaign(address) {
   if (!wallet?.sdk || !address || !wallet?.account) return;
   selectedCampaign.value = address;
   try {
-    selectedCampaignInfo.value = await wallet.sdk.getCampaignInfo(address);
+    const info = await wallet.sdk.getCampaignInfo(address);
+    selectedCampaignInfo.value = info;
     selectedUserInfo.value = await wallet.sdk.getCampaignUserInfo(address, wallet.account);
+
+    // 过期自动结算：如果已到期但未结算，自动触发 finalize
+    if (info.isExpired && !info.finalized) {
+      status.value = '⏰ 众筹已到期，正在自动结算...';
+      isError.value = false;
+      try {
+        await wallet.sdk.finalizeCampaign(address, wallet.account);
+        // 重新加载结算后的数据
+        selectedCampaignInfo.value = await wallet.sdk.getCampaignInfo(address);
+        selectedUserInfo.value = await wallet.sdk.getCampaignUserInfo(address, wallet.account);
+        status.value = '✅ 众筹已自动结算' + (selectedCampaignInfo.value.success ? '（成功）' : '（失败，已自动退款）');
+      } catch (finalizeErr) {
+        console.error('自动结算失败', finalizeErr);
+        status.value = `⚠️ 自动结算失败: ${finalizeErr.message}，请手动结算`;
+        isError.value = true;
+      }
+    }
   } catch (err) {
     console.error('加载 Campaign 详情失败', err);
     status.value = `❌ 加载 Campaign 失败: ${err.message}`;
@@ -337,6 +472,14 @@ async function handleCreateCampaign() {
 
   try {
     const before = new Set(campaigns.value);
+    const days = Number(createDays.value) || 0;
+    const hours = Number(createHours.value) || 0;
+    const minutes = Number(createMinutes.value) || 0;
+    const durationSec = days * 86400 + hours * 3600 + minutes * 60;
+    if (durationSec <= 0) {
+      throw new Error('持续时间必须大于 0');
+    }
+    const deadlineUnix = Math.floor(Date.now() / 1000) + durationSec;
     await wallet.sdk.createCampaign(
       wallet.account,
       String(createTarget.value ?? '0'),
@@ -344,7 +487,8 @@ async function handleCreateCampaign() {
       String(createRatio.value ?? '0'),
       createName.value,
       createSymbol.value,
-      String(createDeposit.value ?? '0')
+      String(createDeposit.value ?? '0'),
+      deadlineUnix
     );
     status.value = '✅ Campaign 创建成功';
     createTarget.value = '';
@@ -352,6 +496,9 @@ async function handleCreateCampaign() {
     createRatio.value = '';
     createName.value = '';
     createSymbol.value = '';
+    createDays.value = '';
+    createHours.value = '';
+    createMinutes.value = '';
     createDeposit.value = '0';
     await refreshCampaigns();
     const created = campaigns.value.find((addr) => !before.has(addr));
@@ -399,8 +546,9 @@ async function handleFinalize() {
     if (!selectedCampaignInfo.value) {
       throw new Error('无法获取选中 Campaign 详情');
     }
-    if (selectedCampaignInfo.value.creator.toLowerCase() !== wallet.account.toLowerCase()) {
-      throw new Error('当前连接账号不是该 Campaign 的创建者');
+    const isCreator = selectedCampaignInfo.value.creator.toLowerCase() === wallet.account.toLowerCase();
+    if (!isCreator && !isExpiredNow.value) {
+      throw new Error('只有创建者或到期后才能结束众筹');
     }
 
     await wallet.sdk.finalizeCampaign(selectedCampaign.value, wallet.account);
@@ -474,6 +622,44 @@ async function handleRefund() {
   } catch (err) {
     console.error('退款失败', err);
     status.value = `❌ 退款失败: ${err.message}`;
+    isError.value = true;
+  } finally {
+    isProcessing.value = false;
+  }
+}
+
+async function handleClaimRefund() {
+  if (!wallet?.sdk || !selectedCampaign.value || !wallet?.account) return;
+  isProcessing.value = true;
+  status.value = '⏳ 正在领取退款...';
+  isError.value = false;
+
+  try {
+    await wallet.sdk.claimRefund(selectedCampaign.value, wallet.account);
+    status.value = '✅ 退款领取成功';
+    await selectCampaign(selectedCampaign.value);
+  } catch (err) {
+    console.error('领取退款失败', err);
+    status.value = `❌ 领取退款失败: ${err.message}`;
+    isError.value = true;
+  } finally {
+    isProcessing.value = false;
+  }
+}
+
+async function handleSweepTokens() {
+  if (!wallet?.sdk || !selectedCampaign.value || !wallet?.account) return;
+  isProcessing.value = true;
+  status.value = '⏳ 正在扫回未领取代币...';
+  isError.value = false;
+
+  try {
+    await wallet.sdk.sweepUnclaimedTokens(selectedCampaign.value, wallet.account);
+    status.value = '✅ 代币扫回成功';
+    await selectCampaign(selectedCampaign.value);
+  } catch (err) {
+    console.error('扫回失败', err);
+    status.value = `❌ 扫回失败: ${err.message}`;
     isError.value = true;
   } finally {
     isProcessing.value = false;
@@ -572,8 +758,8 @@ async function handleWithdrawDeposit() {
 /* 工作区布局 */
 .crowd-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
 }
 
@@ -628,39 +814,82 @@ async function handleWithdrawDeposit() {
 .field-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .field-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .field-row label {
-  width: 110px;
-  flex-shrink: 0;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: #334155;
   font-weight: 650;
 }
 
 .field-row input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.95);
   outline: none;
   font-size: 0.85rem;
+  box-sizing: border-box;
   transition: box-shadow 140ms ease, border-color 140ms ease;
 }
 
 .field-row input:focus {
   border-color: rgba(59, 130, 246, 0.65);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* 持续时间输入 */
+.duration-inputs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.dur-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  transition: box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.dur-field:focus-within {
+  border-color: rgba(59, 130, 246, 0.65);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.dur-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 4px 8px 8px;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.85rem;
+  text-align: center;
+  outline: none;
+}
+
+.dur-unit {
+  padding: 8px 8px 8px 2px;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Campaign 列表 */
@@ -786,6 +1015,15 @@ async function handleWithdrawDeposit() {
   color: #dc2626;
 }
 
+.badge-expired {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.text-red {
+  color: #dc2626 !important;
+}
+
 /* 募集进度 */
 .progress-section {
   background: rgba(248, 250, 252, 0.96);
@@ -878,6 +1116,15 @@ async function handleWithdrawDeposit() {
   border-radius: 12px;
   padding: 12px 14px;
   margin-bottom: 14px;
+}
+
+.user-section.creator-section {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(217, 119, 6, 0.03));
+  border: 1px solid rgba(245, 158, 11, 0.18);
+}
+
+.user-section.creator-section h4 {
+  color: #92400e;
 }
 
 .user-section h4 {
@@ -1015,6 +1262,16 @@ async function handleWithdrawDeposit() {
   background: linear-gradient(180deg, #8b5cf6, #6d28d9);
 }
 
+.auto-refund-notice {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #92400e;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .warn-btn {
   background: linear-gradient(180deg, #ef4444, #b91c1c);
 }
@@ -1073,15 +1330,6 @@ async function handleWithdrawDeposit() {
 @media (max-width: 900px) {
   .crowd-workspace {
     grid-template-columns: 1fr;
-  }
-
-  .field-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .field-row label {
-    width: auto;
   }
 
   .detail-grid {

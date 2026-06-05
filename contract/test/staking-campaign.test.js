@@ -21,13 +21,16 @@ describe("质押 + 众筹 全流程端到端测试", function () {
     await setFactoryTx.wait();
     console.log("🔗 已将 StakingVault 的工厂地址更新为 CrowdfundFactory");
 
-    // 4. 发起项目
+    // 4. 发起项目（截止时间为 30 天后）
+    const latestBlock = await ethers.provider.getBlock("latest");
+    const deadline = latestBlock.timestamp + 30 * 24 * 3600;
     const createTx = await factory.connect(project).createCampaign(
       ethers.parseEther("1"), // 目标 1 ETH
       1000,                  // 1000 代币
       3000,                  // 最高抵扣 30% (BPS: 3000)
       "演示项目",
       "DPR",
+      deadline,
       { value: ethers.parseEther("0.02") } // 质押保证金
     );
     await createTx.wait();
@@ -106,7 +109,7 @@ describe("质押 + 众筹 全流程端到端测试", function () {
     console.log("🔓 项目发起者已取回初始保证金");
   });
 
-  it("众筹失败时：应允许投资者申请退款", async function () {
+  it("众筹失败时：应自动退款给所有参与者", async function () {
     const [deployer, bob, project] = await ethers.getSigners();
 
     const StakingVault = await ethers.getContractFactory("StakingVault", deployer);
@@ -119,13 +122,16 @@ describe("质押 + 众筹 全流程端到端测试", function () {
 
     await vault.setFactory(factory.target);
 
-    // 发起一个目标极高的项目，使其必然失败
+    // 发起一个目标极高的项目，使其必然失败（截止时间为 30 天后）
+    const latestBlock = await ethers.provider.getBlock("latest");
+    const deadline = latestBlock.timestamp + 30 * 24 * 3600;
     const createTx = await factory.connect(project).createCampaign(
       ethers.parseEther("10"),
       1000,
       2000,
       "失败测试项目",
       "FAIL",
+      deadline,
       { value: ethers.parseEther("0.02") }
     );
     await createTx.wait();
@@ -139,16 +145,88 @@ describe("质押 + 众筹 全流程端到端测试", function () {
     await campaign.connect(bob).pledge({ value: ethers.parseEther("1") });
     console.log("🏃 Bob 向必然失败的项目投入 1 ETH");
 
-    await campaign.connect(project).finalize();
+    // 结算时自动退款
+    const finalizeTx = await campaign.connect(project).finalize();
+    await finalizeTx.wait();
     console.log("🏁 众筹结算。成功状态:", await campaign.success());
     expect(await campaign.success()).to.equal(false);
 
-    const refundTx = await campaign.connect(bob).refund();
-    await refundTx.wait();
-    console.log("🔄 众筹失败，Bob 已申请退款");
+    // 验证：finalize 已自动退款，ethContributed 应为 0
+    const bobEthContributed = await campaign.ethContributed(bob.address);
+    console.log("📊 Bob 的 ethContributed (应为 0):", ethers.formatEther(bobEthContributed));
+    expect(bobEthContributed).to.equal(0);
 
     const bobBalanceAfter = await ethers.provider.getBalance(bob.address);
     console.log("💰 退款后 Bob 的 ETH 余额:", ethers.formatEther(bobBalanceAfter));
     expect(bobBalanceAfter).to.be.gte(bobBalanceBefore - ethers.parseEther("0.01"));
+  });
+
+  it("过期众筹：应自动结算并退款", async function () {
+    const [deployer, alice, project] = await ethers.getSigners();
+
+    const StakingVault = await ethers.getContractFactory("StakingVault", deployer);
+    const vault = await StakingVault.deploy();
+    await vault.waitForDeployment();
+
+    const CrowdfundFactory = await ethers.getContractFactory("CrowdfundFactory", deployer);
+    const factory = await CrowdfundFactory.deploy(vault.target, ethers.parseEther("0.01"));
+    await factory.waitForDeployment();
+
+    await vault.setFactory(factory.target);
+
+    // 使用链上区块时间，设截止时间为当前区块时间 + 2 小时
+    const latestBlock = await ethers.provider.getBlock("latest");
+    const deadline = latestBlock.timestamp + 2 * 3600;
+    const createTx = await factory.connect(project).createCampaign(
+      ethers.parseEther("10"),
+      1000,
+      2000,
+      "过期测试项目",
+      "EXP",
+      deadline,
+      { value: ethers.parseEther("0.02") }
+    );
+    await createTx.wait();
+    const campaignAddress = await factory.allCampaigns(0);
+    const Campaign = await ethers.getContractFactory("Campaign", deployer);
+    const campaign = Campaign.attach(campaignAddress);
+
+    // Alice 参与
+    const aliceBalanceBefore = await ethers.provider.getBalance(alice.address);
+    await campaign.connect(alice).pledge({ value: ethers.parseEther("1") });
+    console.log("💰 Alice 参与了众筹");
+
+    // 模拟时间流逝到截止后
+    await ethers.provider.send("evm_increaseTime", [3 * 3600]);
+    await ethers.provider.send("evm_mine", []);
+    console.log("⏳ 时间流逝 3 小时，众筹已过期");
+
+    // 尝试认购应被拒绝
+    try {
+      await campaign.connect(alice).pledge({ value: ethers.parseEther("0.1") });
+      console.log("❌ 不应到达此处");
+    } catch (err) {
+      console.log("🚫 认购被拒绝（已过期）:", err.message.includes("Campaign expired") ? "包含 Campaign expired" : err.message.slice(0, 80));
+      expect(err.message).to.include("Campaign expired");
+    }
+
+    // 过期后任何人可调用 finalize 结算（自动退款）
+    const finalizeTx = await campaign.connect(alice).finalize();
+    await finalizeTx.wait();
+    console.log("🏁 任何人已触发结算");
+
+    // 验证已结算且失败
+    expect(await campaign.finalized()).to.equal(true);
+    expect(await campaign.success()).to.equal(false);
+    console.log("✅ 众筹已结算，状态: 失败");
+
+    // 验证已自动退款
+    const aliceEthContributed = await campaign.ethContributed(alice.address);
+    expect(aliceEthContributed).to.equal(0);
+    console.log("✅ Alice 已被自动退款");
+
+    const aliceBalanceAfter = await ethers.provider.getBalance(alice.address);
+    console.log("💰 退款后 Alice 的 ETH 余额:", ethers.formatEther(aliceBalanceAfter));
+    expect(aliceBalanceAfter).to.be.gte(aliceBalanceBefore - ethers.parseEther("0.01"));
   });
 });
